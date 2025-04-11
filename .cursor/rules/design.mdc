@@ -1,0 +1,128 @@
+---
+description: Designing and understanding the big picture of the project, as well as how the details should be implemented
+globs: 
+alwaysApply: false
+---
+## Design Document: STAR Narrative Reference Site
+
+**1. Project Overview & Purpose:**
+
+* **Goal:** To create a personal, static web application serving as a quick reference for STAR (Situation, Task, Action, Result) narratives during job interviews.
+* **Core Functionality:** Display a filterable list of narratives with summaries, allowing users to drill down into full details for each narrative.
+* **Technology:** SvelteKit using `adapter-static` for a performant, easily deployable static site.
+
+**2. Target Audience:**
+
+* Primarily the site owner (you) for interview preparation and quick recall.
+* Potentially shareable with interviewers or mentors if desired (implies a clean, professional design).
+
+**3. Key Features:**
+
+* **Narrative Listing:** Display all available STAR narratives on the main page.
+* **Summary View:** Each narrative listing should show: Title, Tags, Short Summary Situation, Short Summary Task, Short Summary Action, Short Summary Result.
+* **Detail View:** Clicking on a narrative summary should navigate to a dedicated page displaying the full narrative details: Title, Tags, Full Situation, Full Task, Full Action, Full Result.
+* **Tag Filtering:** Allow users to filter the narrative list by selecting one or more tags. Multiple selected tags should act as an "OR" filter (show narratives with *any* selected tag).
+* **Responsive Design:** The site must be usable and look good on various screen sizes (desktop, tablet, mobile).
+* **Static Generation:** The entire site should be pre-rendered HTML, CSS, and JavaScript for optimal performance and simple hosting.
+
+**4. Technology Stack:**
+
+* **Framework:** SvelteKit
+* **Adapter:** SvelteKit `adapter-static`
+* **Styling:** Use the utility-first framework Tailwind CSS (already integrated and set up for this project).
+* **Content:** Markdown files with YAML frontmatter for storing narrative data.
+
+**5. Data Structure:**
+
+* Each STAR narrative will be stored in its own Markdown file (e.g., `src/lib/narratives/project-x-launch.md`).
+* **File Naming Convention:** Use kebab-case filenames representing a slug for the narrative (e.g., `my-greatest-achievement.md`). This slug will be used in the URL for the detail page.
+* **Content Format:** Use YAML frontmatter for structured data and potentially the Markdown body for longer text fields if preferred, although keeping everything in frontmatter is simpler for parsing.
+
+* **YAML Frontmatter Structure (Example):**
+    ```yaml
+    ---
+    title: "Successfully Launched Project X Ahead of Schedule"
+    tags: ["Project Management", "Leadership", "Agile", "Cross-functional Teams"]
+    situation: "The team was tasked with launching Project X, a critical new product feature, within a tight three-month deadline. Initial estimates suggested it would take four months, putting market launch at risk."
+    task: "My role as the project lead was to re-evaluate the plan, identify efficiency gains, and motivate the team to meet the original three-month deadline without compromising quality."
+    action: >
+      Implemented daily stand-ups focused on blockers;
+      Prioritized core features ruthlessly using MoSCoW method;
+      Negotiated additional temporary resources from another team for critical path tasks;
+      Facilitated close collaboration between development, QA, and marketing teams.
+    result: "We successfully launched Project X two days ahead of the three-month deadline. The launch was smooth, initial customer feedback was highly positive, and the project was considered a major success, directly contributing to a 5% increase in user engagement in the following quarter."
+    short_summary_situation: "Tight 3-month deadline for critical Project X launch, initially estimated at 4 months."
+    short_summary_task: "As lead, find efficiencies and motivate team to meet original deadline."
+    short_summary_action: "Improved communication, prioritized ruthlessly, secured extra resources, fostered collaboration."
+    short_summary_result: "Launched 2 days early, positive feedback, 5% engagement increase."
+    published: true # Optional: Flag to include/exclude from build
+    date: 2024-10-26 # Optional: Date for sorting
+    ---
+
+    ```
+
+**6. Page Structure & User Flow:**
+
+* **`/` (Homepage / Narrative List):**
+    * **Data Loading:** Fetches data from all `.md` files in `src/lib/narratives`.
+    * **Content:**
+        * Displays the `TagFilter` component.
+        * Displays a list or grid of `NarrativeCard` components, initially showing all narratives (or filtered narratives if tags are selected).
+    * **User Flow:** User lands here, sees all narratives. Can use the filter. Clicks a card to see details.
+* **`/narrative/[slug]` (Narrative Detail Page):**
+    * **Data Loading:** Fetches data for the specific narrative corresponding to the `[slug]` parameter (derived from the filename).
+    * **Content:**
+        * Displays the `NarrativeDetail` component with all fields (Title, Tags, Full S/T/A/R).
+        * Includes a "Back" link or breadcrumb to return to the homepage list.
+    * **User Flow:** User arrives from the list page. Reads the full narrative. Clicks "Back" to return.
+
+**7. Component Breakdown:**
+
+* **`src/routes/+layout.svelte`:**
+    * Overall page structure (e.g., header, main content area, footer).
+    * Contains the `{@render children()}` for page content.
+    * Could include site title/navigation.
+* **`src/routes/+page.svelte` (Homepage):**
+    * Imports and uses `TagFilter` and `NarrativeCard`.
+    * Contains logic to load all narratives (using SvelteKit's `load` function).
+    * Manages the filtered list based on selected tags.
+* **`src/routes/narrative/[slug]/+page.svelte` (Detail Page):**
+    * Imports and uses `NarrativeDetail`.
+    * Contains logic to load the specific narrative based on the `slug` (using SvelteKit's `load` function).
+* **`src/lib/components/NarrativeCard.svelte`:**
+    * **Props:** `narrative` (object containing title, tags, short summaries, slug).
+    * **UI:** Displays the summary information in a card format.
+    * **Interaction:** The entire card or title should link to `/narrative/[narrative.slug]`. Displays tags using `TagChip`.
+* **`src/lib/components/NarrativeDetail.svelte`:**
+    * **Props:** `narrative` (object containing all narrative fields).
+    * **UI:** Clearly displays the Title, Tags (using `TagChip`), and the full Situation, Task, Action, and Result sections. Use clear headings for S/T/A/R.
+* **`src/lib/components/TagFilter.svelte`:**
+    * **Props:** `allTags` (array of unique tags available), `selectedTags` (reactive array/set of currently selected tags).
+    * **UI:** Displays available tags as clickable buttons or checkboxes. Highlights selected tags. Might include a "Clear All" button.
+    * **Interaction:** Clicking a tag updates the `selectedTags` prop (using `bind:selectedTags` or dispatching events).
+* **`src/lib/components/TagChip.svelte`:**
+    * **Props:** `tag` (string).
+    * **UI:** Small, styled component to display a single tag name consistently (e.g., a rounded rectangle with padding).
+
+**8. Data Loading & Handling:**
+
+* Use SvelteKit's `load` functions in `+page.server.js` or `+page.js` (prefer `.server.js` if possible for static generation) to read the Markdown files during the build process.
+* Libraries like `glob` can find all `.md` files, and `gray-matter` can parse the YAML frontmatter.
+* The `load` function for the homepage should return *all* narrative data (or at least the data needed for the cards + all unique tags).
+* The `load` function for the detail page (`[slug]/+page.server.js`) should find and return data for only the requested narrative.
+* Filtering logic will likely run client-side on the homepage (`+page.svelte`) for responsiveness after the initial load of all narrative data. A Svelte store could manage the selected tags and the filtered list.
+
+**9. Styling & Design:**
+
+* **Theme:** Clean, professional, minimalist. Focus on readability.
+* **Layout:** Simple single-column or two-column layout (filter on side, list main). Responsive design is key.
+* **Typography:** Choose clear, legible fonts. Ensure good contrast.
+* **Color Palette:** Use a limited, professional palette (e.g., blues, grays, white/off-white). Use accent colors sparingly for tags or links.
+* **CSS theme variables:** Use sparingly for easy theme adjustments (e.g., colors, fonts, spacing).
+
+**10. Deployment:**
+
+* Configure `svelte.config.js` to use `adapter-static`.
+* Run `npm run build` (or `pnpm build`, `yarn build`).
+* Deploy the contents of the `build` directory to any static hosting provider (Netlify, Vercel, GitHub Pages, Cloudflare Pages, AWS S3, etc.).
+
